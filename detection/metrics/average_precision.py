@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from pickle import NONE
 from typing import List
@@ -65,36 +66,71 @@ def compute_precision_recall_curve(
     # TODO: Replace this stub code.
     # return PRCurve(torch.zeros(0), torch.zeros(0))
 
-    scores = None
-    predictions_matched = None
-    target_matched = None
+    # scores = None
+    # predictions_matched = None
+    # target_matched = None
+
+    print("number of frames:", len(frames))
+    total_tp = total_fn = total_fp = total_scores = None
+
     for frame in frames:
+
+        matched = set()
         D, L = len(frame.detections), len(frame.labels)
-        euc_dist = torch.cdist(frame.labels.centroids_x()[:,None].expand(D, L) - frame.labels.centroids_x()[None,:].expand(D, L), 
-                                        frame.labels.centroids_y()[:,None].expand(D, L) - frame.labels.centroids_y()[None,:].expand(D, L))
-        dist_mask = euc_dist <= threshold
-        score_mask = frame.detections.scores.expand(-1, L) == torch.max(frame.detections.scores.expand(-1, L) * dist_mask, dim = 1)[None,:].expand(D, -1)
-        if scores == None:
-            scores = frame.detections.scores
-            predictions_matched = torch.sum(score_mask, 1).flatten()
-            target_matched = torch.sum(score_mask, 0).flatten()
+        tp = fp = torch.zeros(D)
+        fn = torch.ones(L)
+
+        # Sort the detections in decreasing order of scores
+        d_score_order = torch.argsort(frame.detections.scores, descending=True)
+
+        # L by D dist matrix (euc_dist[:, d] = dist of labels from detection d)
+        euc_dist = torch.cdist(frame.labels.centroids, frame.detections.centroids[d_score_order])
+        # print(euc_dist)
+
+        # for each detect, find closest label (compute tp and fp)
+        for detect_idx in d_score_order:
+            l_dist_order_d = torch.argsort(euc_dist[:, detect_idx]) # labels per detect
+            for label_idx in l_dist_order_d:
+                # skip to next label if not threshold
+                if euc_dist[label_idx, detect_idx] > threshold:
+                    fp[detect_idx] = 1
+                    break
+                # already assigned - next label
+                elif label_idx in matched:
+                    fp[detect_idx] = 1
+                # tp
+                else:
+                    tp[detect_idx] = 1
+                    matched.add(label_idx)
+
+        # update fn 
+        for i in matched:
+            fn[i] = 0
+
+        if not total_tp:
+            total_tp = torch.cat((total_tp, tp), dim=0)
+            total_fn = torch.cat((total_fn, fn), dim=0)
+            total_fp = torch.cat((total_fp, fp), dim=0)
+            total_scores =  torch.cat((total_scores, frame.detections.scores), dim=0)
         else:
-            scores = torch.cat((scores, frame.detections.scores), dim=0)
-            predictions_matched = torch.cat((predictions_matched, torch.sum(score_mask, 1).flatten()), dim=0)
-            target_matched = torch.cat((target_matched, torch.sum(score_mask, 0).flatten()), dim=0)
+            total_tp, total_fn, total_fp, total_scores = tp, fn, fp, frame.detections.scores
 
-    scores, sort_ind = torch.sort(scores)
-    predictions_matched = predictions_matched[sort_ind]
+    tp_p_fp = torch.sum(total_fp) + torch.sum(total_tp)  # See discussion board (not sure if fn is right)
+    tp_p_fn = torch.sum(total_fp) + torch.sum(total_fn)
 
-    precisions = torch.zeros(scores.shape[0])
-    recalls = torch.zeros(scores.shape[0])
+    d_score_order = torch.argsort(total_scores, descending=True)
+    p_val = torch.zeros(total_scores.shape)
 
-    for i in range(scores.shape[0]):
-        tp = torch.count_nonzero(predictions_matched[:i])
-        precisions[i] = float(tp / (i+1))
-        recalls[i] = float(tp / (tp + (target_matched == 0).sum))
+    if total_scores.shape:
+        p_val[0] = total_tp[d_score_order[0]]
+    for pr_ix in range(1, len(d_score_order)):
+        d_ix = d_score_order[pr_ix]
+        p_val[pr_ix] = p_val[pr_ix-1] + total_tp[d_ix]
 
-    return PRCurve(precisions, recalls)
+    r_val = p_val / tp_p_fn
+    p_val /= tp_p_fp
+
+    return PRCurve(p_val, r_val)
 
     '''
     precisions = torch.zeros(len(frames))
