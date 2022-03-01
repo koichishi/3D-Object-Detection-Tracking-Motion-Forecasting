@@ -29,7 +29,26 @@ def heatmap_weighted_mse_loss(
             weighted average using the provided `heatmap`.
     """
     # TODO: Replace this stub code.
-    return torch.sum(predictions) * 0.0
+    # return torch.sum(predictions) * 0.0
+    # MSE loss
+    bs, C, H, W = predictions.shape
+    # mse_loss = torch.sum((predictions - targets).square(), dim=1) / C
+    mse_loss = torch.linalg.norm(predictions - targets, dim=1) / C
+
+    # print("mse loss dim: " + str(mse_loss.shape))
+
+    # binary mask
+    mask = torch.reshape(heatmap > heatmap_threshold, (bs, H, W))
+
+    # get result
+    return torch.sum(mask * mse_loss * torch.reshape(heatmap, (bs, H, W))) / torch.sum(mask)
+
+    '''another idea not following the given steps
+    loss = torch.nn.MSELoss(reduction='none')
+    mask = heatmap > heatmap_threshold
+    return torch.sum(loss(predictions, targets) * heatmap * mask) / torch.sum(mask)
+    '''
+    
 
 
 @dataclass

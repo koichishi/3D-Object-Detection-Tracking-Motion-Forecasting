@@ -19,7 +19,7 @@ def overfit(
     output_root: str,
     seed: int = 42,
     num_iterations: int = 500,
-    log_frequency: int = 100,
+    log_frequency: int = 10,
     learning_rate: float = 1e-4,
 ) -> None:
     """Overfit detector to one frame of the Pandaset dataset.

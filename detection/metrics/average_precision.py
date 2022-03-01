@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pickle import NONE
 from typing import List
 
 import torch
@@ -62,7 +63,58 @@ def compute_precision_recall_curve(
         A precision/recall curve.
     """
     # TODO: Replace this stub code.
-    return PRCurve(torch.zeros(0), torch.zeros(0))
+    # return PRCurve(torch.zeros(0), torch.zeros(0))
+
+    scores = None
+    predictions_matched = None
+    target_matched = None
+    for frame in frames:
+        D, L = len(frame.detections), len(frame.labels)
+        euc_dist = torch.cdist(frame.labels.centroids_x()[:,None].expand(D, L) - frame.labels.centroids_x()[None,:].expand(D, L), 
+                                        frame.labels.centroids_y()[:,None].expand(D, L) - frame.labels.centroids_y()[None,:].expand(D, L))
+        dist_mask = euc_dist <= threshold
+        score_mask = frame.detections.scores.expand(-1, L) == torch.max(frame.detections.scores.expand(-1, L) * dist_mask, dim = 1)[None,:].expand(D, -1)
+        if scores == None:
+            scores = frame.detections.scores
+            predictions_matched = torch.sum(score_mask, 1).flatten()
+            target_matched = torch.sum(score_mask, 0).flatten()
+        else:
+            scores = torch.cat((scores, frame.detections.scores), dim=0)
+            predictions_matched = torch.cat((predictions_matched, torch.sum(score_mask, 1).flatten()), dim=0)
+            target_matched = torch.cat((target_matched, torch.sum(score_mask, 0).flatten()), dim=0)
+
+    scores, sort_ind = torch.sort(scores)
+    predictions_matched = predictions_matched[sort_ind]
+
+    precisions = torch.zeros(scores.shape[0])
+    recalls = torch.zeros(scores.shape[0])
+
+    for i in range(scores.shape[0]):
+        tp = torch.count_nonzero(predictions_matched[:i])
+        precisions[i] = float(tp / (i+1))
+        recalls[i] = float(tp / (tp + (target_matched == 0).sum))
+
+    return PRCurve(precisions, recalls)
+
+    '''
+    precisions = torch.zeros(len(frames))
+    recalls = torch.zeros(len(frames))
+    for f in range(len(frames)):
+        D, L = len(frames[i].detections), len(frames[i].labels)
+        euc_dist = torch.zeros(D, L)
+        for i in range(D):
+            euc_dist[i] = torch.cdist(frames[i].labels.centroids_x() - torch.tensor([frames[i].detections.centroids_x()[i]]).expand(L), 
+                                        frames[i].labels.centroids_y() - torch.tensor([frames[i].detections.centroids_y()[i]]).expand(L))
+        nearest_dist_mask = euc_dist  == torch.max(euc_dist, dim = 0).expand(-1, L)
+        euc_dist[not nearest_dist_mask] = float('inf')
+        dist_mask = euc_dist <= threshold
+        score_mask = frames[i].detections.scores.expand(-1, L) == torch.max(frames[i].detections.scores.expand(-1, L) * dist_mask, dim = 1).expand(D, -1)
+
+        precisions[i] = float(torch.count_nonzero(score_mask) / D)
+        recalls[i] = float(torch.count_nonzero(score_mask) / L)
+    
+    return PRCurve(precisions, recalls)
+    '''
 
 
 def compute_area_under_curve(curve: PRCurve) -> float:
@@ -81,8 +133,12 @@ def compute_area_under_curve(curve: PRCurve) -> float:
         The area under the curve, as defined above.
     """
     # TODO: Replace this stub code.
-    return torch.sum(curve.recall).item() * 0.0
+    # return torch.sum(curve.recall).item() * 0.0
+    rec_m1 = torch.roll(curve.recall, 1)
+    rec_m1[0] = 0
+    return float(torch.sum(curve.precision * (curve.recall - rec_m1)))
 
+    
 
 def compute_average_precision(
     frames: List[EvaluationFrame], threshold: float
@@ -98,4 +154,6 @@ def compute_average_precision(
         A dataclass consisting of a PRCurve and its average precision.
     """
     # TODO: Replace this stub code.
-    return AveragePrecisionMetric(0.0, PRCurve(torch.zeros(0), torch.zeros(0)))
+    # return AveragePrecisionMetric(0.0, PRCurve(torch.zeros(0), torch.zeros(0)))
+    prc = compute_precision_recall_curve(frames, threshold)
+    return AveragePrecisionMetric(float(torch.mean(prc.precision)), prc)
