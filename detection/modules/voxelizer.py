@@ -83,8 +83,8 @@ class Voxelizer(torch.nn.Module):
         )
         for i in range(len(pointclouds)):
             for coor in pointclouds[i]:
-                if self._y_min <= coor[1] <= self._y_max and self._x_min <= coor[0] <= self._x_max:
-                    i_coor = torch.floor((torch.clamp(coor[2], min=self._z_min, max=self._z_max-(1e-5)) - self._z_min) / self._step)
+                if self._y_min <= coor[1] < self._y_max and self._x_min <= coor[0] < self._x_max:
+                    i_coor = torch.clamp(torch.floor((coor[2] - self._z_min) / self._step), 0, self._depth - 1)
                     j_coor = torch.floor((self._y_max - coor[1]) / self._step)
                     k_coor = torch.floor((coor[0] - self._x_min) / self._step)  
                     result[i, int(i_coor), int(j_coor), int(k_coor)] = bool(1)

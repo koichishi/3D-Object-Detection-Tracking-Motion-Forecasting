@@ -34,10 +34,10 @@ def create_heatmap(grid_coords: Tensor, center: Tensor, scale: float) -> Tensor:
     result = torch.exp(0 - torch.div(torch.square(grid_coords[:, :, 0]-center[0]) + torch.square(grid_coords[:, :, 1]-center[1]), scale))
     # result = torch.nn.functional.normalize(result)
     # result = torch.sigmoid(result)
-    print("heatmapppppp")
-    print(result)
+    # print("heatmapppppp")
+    # print(result)
     result = result / torch.max(result)
-    print(result)
+    # print(result)
     return result
 
 
@@ -62,7 +62,7 @@ class DetectionLossTargetBuilder:
     def build_target_tensor_for_label(
         self, cx: float, cy: float, yaw: float, x_size: float, y_size: float
     ) -> Tensor:
-        """Return the training target    tensor for the given bounding box.
+        """Return the training target tensor for the given bounding box.
 
         This method computes a 7-dimension vector for each pixel (i, j) in the
         [H x W] BEV image. In order, the 7 channels contain:
