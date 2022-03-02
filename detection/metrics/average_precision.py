@@ -66,11 +66,9 @@ def compute_precision_recall_curve(
     # TODO: Replace this stub code.
     # return PRCurve(torch.zeros(0), torch.zeros(0))
 
-    # scores = None
-    # predictions_matched = None
-    # target_matched = None
 
-    # print("number of frames:", len(frames))
+    num_labels = 0 # for sanity check
+
     total_tp = total_fn = total_fp = total_scores = None
 
     for frame in frames:
@@ -79,6 +77,8 @@ def compute_precision_recall_curve(
         D, L = len(frame.detections), len(frame.labels)
         tp = fp = torch.zeros(D)
         fn = torch.ones(L)
+
+        num_labels += L
 
         # Sort the detections in decreasing order of scores
         d_score_order = torch.argsort(frame.detections.scores, descending=True)
@@ -89,21 +89,12 @@ def compute_precision_recall_curve(
 
         # for each detect, find closest label (compute tp and fp)
         for detect_idx in d_score_order:
-            l_dist_order_d = torch.argmax(euc_dist[:, detect_idx]) # ! only check the closest label per detect
-            for label_idx in l_dist_order_d:
-                # skip to next label if not threshold
-                if euc_dist[label_idx, detect_idx] > threshold:
-                    fp[detect_idx] = 1
-                    break
-                # already assigned - next label
-                elif label_idx in matched:
-                    fp[detect_idx] = 1
-                    break
-                # tp
-                else:
-                    tp[detect_idx] = 1
-                    matched.add(label_idx)
-                    break
+            label_idx = torch.argmax(euc_dist[:, detect_idx]) # only check the closest label per detect
+            if euc_dist[label_idx, detect_idx] > threshold or label_idx in matched:
+                fp[detect_idx] = 1
+            else:
+                tp[detect_idx] = 1
+                matched.add(label_idx)
 
         # update fn 
         for i in matched:
@@ -123,17 +114,14 @@ def compute_precision_recall_curve(
     d_score_order = torch.argsort(total_scores, descending=True)
     p_val = torch.zeros(total_scores.shape)
 
-    # torch.cumsum
-    if total_scores.shape:
-        p_val[0] = total_tp[d_score_order[0]]
-    for pr_ix in range(1, len(d_score_order)):
-        d_ix = d_score_order[pr_ix]
-        p_val[pr_ix] = p_val[pr_ix-1] + total_tp[d_ix]
+    cum_tp = torch.cumsum(total_tp[d_score_order])
+    cum_tp_fp = torch.cumsum((total_tp + total_fp)[d_score_order])
 
-    # ! Assert number of tp_p_fn == number of labels within all the frames
+    # check if number of tp_p_fn == number of labels within all the frames
+    assert tp_p_fn == num_labels
 
-    r_val = p_val / tp_p_fn
-    p_val /= tp_p_fp # !divide by the number of detection SO FAR
+    r_val = cum_tp / tp_p_fn
+    p_val = cum_tp / cum_tp_fp # divide by the number of detection SO FAR
 
     return PRCurve(p_val, r_val)
 
