@@ -70,7 +70,7 @@ def compute_precision_recall_curve(
     # predictions_matched = None
     # target_matched = None
 
-    print("number of frames:", len(frames))
+    # print("number of frames:", len(frames))
     total_tp = total_fn = total_fp = total_scores = None
 
     for frame in frames:
@@ -89,7 +89,7 @@ def compute_precision_recall_curve(
 
         # for each detect, find closest label (compute tp and fp)
         for detect_idx in d_score_order:
-            l_dist_order_d = torch.argsort(euc_dist[:, detect_idx]) # labels per detect
+            l_dist_order_d = torch.argmax(euc_dist[:, detect_idx]) # ! only check the closest label per detect
             for label_idx in l_dist_order_d:
                 # skip to next label if not threshold
                 if euc_dist[label_idx, detect_idx] > threshold:
@@ -98,10 +98,12 @@ def compute_precision_recall_curve(
                 # already assigned - next label
                 elif label_idx in matched:
                     fp[detect_idx] = 1
+                    break
                 # tp
                 else:
                     tp[detect_idx] = 1
                     matched.add(label_idx)
+                    break
 
         # update fn 
         for i in matched:
@@ -115,20 +117,23 @@ def compute_precision_recall_curve(
         else:
             total_tp, total_fn, total_fp, total_scores = tp, fn, fp, frame.detections.scores
 
-    tp_p_fp = torch.sum(total_fp) + torch.sum(total_tp)  # See discussion board (not sure if fn is right)
-    tp_p_fn = torch.sum(total_fp) + torch.sum(total_fn)
+    tp_p_fp = torch.sum(total_tp) + torch.sum(total_fp)  # See discussion board (not sure if fn is right)
+    tp_p_fn = torch.sum(total_tp) + torch.sum(total_fn)
 
     d_score_order = torch.argsort(total_scores, descending=True)
     p_val = torch.zeros(total_scores.shape)
 
+    # torch.cumsum
     if total_scores.shape:
         p_val[0] = total_tp[d_score_order[0]]
     for pr_ix in range(1, len(d_score_order)):
         d_ix = d_score_order[pr_ix]
         p_val[pr_ix] = p_val[pr_ix-1] + total_tp[d_ix]
 
+    # ! Assert number of tp_p_fn == number of labels within all the frames
+
     r_val = p_val / tp_p_fn
-    p_val /= tp_p_fp
+    p_val /= tp_p_fp # !divide by the number of detection SO FAR
 
     return PRCurve(p_val, r_val)
 
