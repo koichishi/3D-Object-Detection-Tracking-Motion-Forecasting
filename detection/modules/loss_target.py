@@ -8,13 +8,17 @@ from detection.modules.loss_function import DetectionLossConfig
 from detection.types import Detections
 
 
-def create_heatmap(grid_coords: Tensor, center: Tensor, covariance: Tensor) -> Tensor:
-    """Return a heatmap based on a Gaussian kernel with center `center` and scale `scale`.
+def create_heatmap(grid_coords: Tensor, center: Tensor, scale: Tensor, tri: Tensor) -> Tensor:
+    """Return a heatmap based on a Gaussian kernel with center `center`, scale `scale`, 
+    and trigonometric values `tri`.
 
     Specifically, each pixel with coordinates (x, y) is assigned a heatmap value
-    using a Gaussian kernel centered on (cx, cy) with scale s:
+    using a Gaussian kernel centered on (cx, cy) with scale (sx, sy) and trigonometric values
+    of rotation angle (cos_theta, sin_theta):
 
-                e^(-((x - cx)^2 + (y - cy)^2) / s)
+        dx = x - cx
+        dy = y - cy
+        e^(-((dx * cos_theta + dy * sin_theta)^2 / sx + (-dx * sin_theta + dy * cos_theta)^2 / sy))
 
     Subsequently, the heatmap is normalized such that its maximum value is 1.
 
@@ -24,19 +28,22 @@ def create_heatmap(grid_coords: Tensor, center: Tensor, covariance: Tensor) -> T
             contains the elements (0, 0), (0, 1), (0, 2), ..., (1, 2).
         center: A [2] tensor containing the (x, y) coordinate of the center.
             This argument controls the kernel's center.
-        covariance: A [2 x 2] covariance matrix that controls the kernel's scale.
+        scale: A [2 x 1] vector specify the scales of kernel
+        tri: A [2 x 1] vector that controls the kernel's rotation.
 
     Returns:
         An [H x W] heatmap tensor, normalized such that its peak is 1.
     """
     # TODO: Replace this stub code.
     # result = torch.zeros_like(grid_coords[:, :, 0], dtype=torch.float)
-    xy = torch.stack([grid_coords[:, :, 0] - center[0], 
-                      grid_coords[:, :, 1] - center[1]])
-    assert xy.shape == grid_coords.shape
-    result = torch.exp( - torch.sum(xy @ torch.inverse(covariance) * xy, dim=2) \
-                        / torch.norm(covariance) 
-                    )
+    dx, dy = grid_coords[:, :, 0] - center[0], grid_coords[:, :, 1] - center[1]
+    cos, sin = tri[0], tri[1]
+    _tmp1 = torch.pow(dx * cos + dy * sin, 2) / scale[0]
+    _tmp2 = torch.pow(0 - dx * sin + dy * cos, 2) / scale[1]
+    result = torch.exp(-(_tmp1 + _tmp2))
+
+    # Sanity check
+    assert result.shape == grid_coords.shape[: 2]
     result = result / torch.max(result)
     return result
 
@@ -102,13 +109,12 @@ class DetectionLossTargetBuilder:
 
         # 2. Create heatmap training targets by invoking the `create_heatmap` function.
         center = torch.tensor([cx, cy])
+        # scale = (x_size ** 2 + y_size ** 2) / self._heatmap_norm_scale
         scale_x, scale_y =  x_size ** 2 / self._heatmap_norm_scale, \
                             y_size ** 2 / self._heatmap_norm_scale
-        scale_mat = torch.FloatTensor([[scale_x, 0], [0, scale_y]])
-        trans_mat = torch.FloatTensor([[torch.cos(yaw), -torch.sin(yaw)], 
-                                       [torch.sin(yaw), torch.cos(yaw)]])
-        cov_mat = scale_mat @ trans_mat
-        heatmap = create_heatmap(grid_coords, center=center, covariance=cov_mat)  # [H x W]
+        scale = torch.FloatTensor([scale_x, scale_y])
+        tri = torch.FloatTensor([math.cos(yaw), math.sin(yaw)])
+        heatmap = create_heatmap(grid_coords, center=center, scale=scale, tri=tri)  # [H x W]
 
         # 3. Create offset training targets.
         # Given the label's center (cx, cy), the target offset at pixel (i, j) equals
@@ -160,7 +166,7 @@ class DetectionLossTargetBuilder:
         # TODO: Replace this stub code.
         # headings = torch.zeros(H, W, 2)
         headings = torch.zeros(H, W, 2)
-        headings[heatmap > self._heatmap_threshold] = torch.tensor([torch.sin(yaw), torch.cos(yaw)])
+        headings[heatmap > self._heatmap_threshold] = torch.tensor([math.sin(yaw), math.cos(yaw)])
         '''headings = torch.tensor([math.sin(yaw), math.cos(yaw)])
         headings = headings[None, None, :].expand(H, W, 2)
         headings = headings * (heatmap > self._heatmap_threshold)[:,:,None]'''
