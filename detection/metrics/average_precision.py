@@ -112,7 +112,6 @@ def compute_precision_recall_curve(
     tp_p_fn = torch.sum(total_tp) + torch.sum(total_fn)
 
     d_score_order = torch.argsort(total_scores, descending=True)
-    p_val = torch.zeros(total_scores.shape)
 
     cum_tp = torch.cumsum(total_tp[d_score_order])
     cum_tp_fp = torch.cumsum((total_tp + total_fp)[d_score_order])

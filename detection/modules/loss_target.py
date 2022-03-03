@@ -8,7 +8,7 @@ from detection.modules.loss_function import DetectionLossConfig
 from detection.types import Detections
 
 
-def create_heatmap(grid_coords: Tensor, center: Tensor, scale: float) -> Tensor:
+def create_heatmap(grid_coords: Tensor, center: Tensor, covariance: Tensor) -> Tensor:
     """Return a heatmap based on a Gaussian kernel with center `center` and scale `scale`.
 
     Specifically, each pixel with coordinates (x, y) is assigned a heatmap value
@@ -24,20 +24,20 @@ def create_heatmap(grid_coords: Tensor, center: Tensor, scale: float) -> Tensor:
             contains the elements (0, 0), (0, 1), (0, 2), ..., (1, 2).
         center: A [2] tensor containing the (x, y) coordinate of the center.
             This argument controls the kernel's center.
-        scale: A scalar value that controls the kernel's scale.
+        covariance: A [2 x 2] covariance matrix that controls the kernel's scale.
 
     Returns:
         An [H x W] heatmap tensor, normalized such that its peak is 1.
     """
     # TODO: Replace this stub code.
     # result = torch.zeros_like(grid_coords[:, :, 0], dtype=torch.float)
-    result = torch.exp(0 - torch.div(torch.square(grid_coords[:, :, 0]-center[0]) + torch.square(grid_coords[:, :, 1]-center[1]), scale))
-    # result = torch.nn.functional.normalize(result)
-    # result = torch.sigmoid(result)
-    # print("heatmapppppp")
-    # print(result)
+    xy = torch.stack([grid_coords[:, :, 0] - center[0], 
+                      grid_coords[:, :, 1] - center[1]])
+    assert xy.shape == grid_coords.shape
+    result = torch.exp( - torch.sum(xy @ torch.inverse(covariance) * xy, dim=2) \
+                        / torch.norm(covariance) 
+                    )
     result = result / torch.max(result)
-    # print(result)
     return result
 
 
@@ -102,8 +102,13 @@ class DetectionLossTargetBuilder:
 
         # 2. Create heatmap training targets by invoking the `create_heatmap` function.
         center = torch.tensor([cx, cy])
-        scale = (x_size ** 2 + y_size ** 2) / self._heatmap_norm_scale
-        heatmap = create_heatmap(grid_coords, center=center, scale=scale)  # [H x W]
+        scale_x, scale_y =  x_size ** 2 / self._heatmap_norm_scale, \
+                            y_size ** 2 / self._heatmap_norm_scale
+        scale_mat = torch.FloatTensor([[scale_x, 0], [0, scale_y]])
+        trans_mat = torch.FloatTensor([[torch.cos(yaw), -torch.sin(yaw)], 
+                                       [torch.sin(yaw), torch.cos(yaw)]])
+        cov_mat = scale_mat @ trans_mat
+        heatmap = create_heatmap(grid_coords, center=center, covariance=cov_mat)  # [H x W]
 
         # 3. Create offset training targets.
         # Given the label's center (cx, cy), the target offset at pixel (i, j) equals
@@ -155,7 +160,7 @@ class DetectionLossTargetBuilder:
         # TODO: Replace this stub code.
         # headings = torch.zeros(H, W, 2)
         headings = torch.zeros(H, W, 2)
-        headings[heatmap > self._heatmap_threshold] = torch.tensor([math.sin(yaw), math.cos(yaw)])
+        headings[heatmap > self._heatmap_threshold] = torch.tensor([torch.sin(yaw), torch.cos(yaw)])
         '''headings = torch.tensor([math.sin(yaw), math.cos(yaw)])
         headings = headings[None, None, :].expand(H, W, 2)
         headings = headings * (heatmap > self._heatmap_threshold)[:,:,None]'''
