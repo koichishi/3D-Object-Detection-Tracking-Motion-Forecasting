@@ -7,6 +7,8 @@ import torch
 from pylab import plt
 from tqdm import tqdm
 
+import pickle
+
 from detection.dataset import PandasetDataset, custom_collate
 from detection.metrics.evaluator import Evaluator
 from detection.model import DetectionModel, DetectionModelConfig
@@ -101,7 +103,7 @@ def train(
     output_root: str,
     seed: int = 42,
     batch_size: int = 2,
-    num_workers: int = 8,
+    num_workers: int = 6,
     num_epochs: int = 5,
     log_frequency: int = 100,
     learning_rate: float = 1e-4,
@@ -192,6 +194,9 @@ def train(
 
         torch.save(model.state_dict(), f"{output_root}/{epoch:03d}.pth")
 
+def save_object(obj, filename):
+    with open(filename, 'wb') as outp:  # Overwrites any existing file.
+        pickle.dump(obj, outp, pickle.HIGHEST_PROTOCOL)
 
 @torch.no_grad()
 def test(
@@ -232,6 +237,7 @@ def test(
         dataset, num_workers=num_workers, collate_fn=custom_collate
     )
 
+    evaluator = Evaluator(ap_thresholds=[2.0, 4.0, 8.0, 16.0])
     for idx, (bev_lidar, _, labels) in tqdm(enumerate(dataloader)):
         model.eval()
         detections = model.inference(bev_lidar[0].to(device))
@@ -239,6 +245,22 @@ def test(
         visualize_detections(lidar, detections, labels[0])
         plt.savefig(f"{output_root}/{idx:03d}.png")
         plt.close("all")
+
+        # Evaluate
+        evaluator.append(detections.to(torch.device("cpu")), labels[0])
+    
+    save_object(evaluator, f"{output_root}/evaluator.pth")
+
+    # result = evaluator.evaluate()
+    # result_df = result.as_dataframe()
+    # with open(f"{output_root}/evaluation.csv", "w") as f:
+    #     f.write(result_df.to_csv())
+
+    # result.visualize()
+    # plt.savefig(f"{output_root}/evaluation.png")
+    # plt.close("all")
+
+    # print(result_df)
 
 
 @torch.no_grad()
@@ -267,24 +289,8 @@ def evaluate(
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     os.makedirs(output_root, exist_ok=True)
 
-    # setup model
-    model_config = DetectionModelConfig()
-    model = DetectionModel(model_config)
-    if checkpoint_path is not None:
-        model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
-    model = model.to(device)
-
-    # setup data
-    dataset = PandasetDataset(data_root, model_config, test=True)
-    dataloader = torch.utils.data.DataLoader(
-        dataset, num_workers=num_workers, collate_fn=custom_collate
-    )
-
-    evaluator = Evaluator(ap_thresholds=[2.0, 4.0, 8.0, 16.0])
-    for _, (bev_lidar, _, labels) in tqdm(enumerate(dataloader)):
-        model.eval()
-        detections = model.inference(bev_lidar[0].to(device))
-        evaluator.append(detections.to(torch.device("cpu")), labels[0])
+    with open(checkpoint_path, 'rb') as inp:
+        evaluator = pickle.load(inp)
 
     result = evaluator.evaluate()
     result_df = result.as_dataframe()
