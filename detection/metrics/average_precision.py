@@ -75,7 +75,8 @@ def compute_precision_recall_curve(
 
         matched = set()
         D, L = len(frame.detections), len(frame.labels)
-        tp = fp = torch.zeros(D)
+        tp = torch.zeros(D)
+        fp = torch.zeros(D)
         fn = torch.ones(L)
 
         num_labels += L
@@ -84,23 +85,24 @@ def compute_precision_recall_curve(
         d_score_order = torch.argsort(frame.detections.scores, descending=True)
 
         # L by D dist matrix (euc_dist[:, d] = dist of labels from detection d)
-        euc_dist = torch.cdist(frame.labels.centroids, frame.detections.centroids[d_score_order])
-        # print(euc_dist)
+        euc_dist = torch.cdist(frame.labels.centroids, frame.detections.centroids)
 
         # for each detect, find closest label (compute tp and fp)
+
         for detect_idx in d_score_order:
-            label_idx = torch.argmax(euc_dist[:, detect_idx]) # only check the closest label per detect
+            label_idx = torch.argmin(euc_dist[:, detect_idx]).item() # only check the closest label per detect
             if euc_dist[label_idx, detect_idx] > threshold or label_idx in matched:
                 fp[detect_idx] = 1
+                # print("reach1")
             else:
                 tp[detect_idx] = 1
                 matched.add(label_idx)
+                # print("reach2")
 
-        # update fn 
         for i in matched:
             fn[i] = 0
 
-        if not total_tp:
+        if total_tp is not None:
             total_tp = torch.cat((total_tp, tp), dim=0)
             total_fn = torch.cat((total_fn, fn), dim=0)
             total_fp = torch.cat((total_fp, fp), dim=0)
@@ -114,8 +116,8 @@ def compute_precision_recall_curve(
     d_score_order = torch.argsort(total_scores, descending=True)
     p_val = torch.zeros(total_scores.shape)
 
-    cum_tp = torch.cumsum(total_tp[d_score_order])
-    cum_tp_fp = torch.cumsum((total_tp + total_fp)[d_score_order])
+    cum_tp = torch.cumsum(total_tp[d_score_order], dim=0)
+    cum_tp_fp = torch.cumsum((total_tp + total_fp)[d_score_order], dim=0)
 
     # check if number of tp_p_fn == number of labels within all the frames
     assert tp_p_fn == num_labels

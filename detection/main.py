@@ -249,7 +249,8 @@ def test(
         # Evaluate
         evaluator.append(detections.to(torch.device("cpu")), labels[0])
     
-    save_object(evaluator, f"{output_root}/evaluator.pth")
+    checkpt = checkpoint_path.split('/')[-1].split('.')[0]
+    save_object(evaluator, f"{output_root}/evaluator_" + checkpt + ".pth")
 
     # result = evaluator.evaluate()
     # result_df = result.as_dataframe()
@@ -268,7 +269,7 @@ def evaluate(
     data_root: str,
     output_root: str,
     seed: int = 42,
-    num_workers: int = 8,
+    num_workers: int = 6,
     checkpoint_path: Optional[str] = None,
 ) -> None:
     """Evaluate the detector on Pandaset and save its metrics.

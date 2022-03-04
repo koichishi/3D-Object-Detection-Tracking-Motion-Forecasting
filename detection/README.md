@@ -51,6 +51,8 @@ from the root directory of this repository:
 
 ```bash
 python -m detection.main evaluate --data_root=/u/csc490h/dataset --output_root=~/Desktop/csc490/3D-Object-Detection/output --checkpoint_path<your_path_to_checkpoint>
+
+srun -p csc490-compute -c 6 -N 1 --gres gpu -o ~/Desktop/csc490/3D-Object-Detection/output/evaluate/outfile python3 -m detection.main evaluate --data_root=/u/csc490h/dataset --output_root=/h/u9/c7/00/shigongy/Desktop/csc490/3D-Object-Detection/output/evaluate --checkpoint_path=/h/u9/c7/00/shigongy/Desktop/csc490/3D-Object-Detection/output/visualization/evaluator.pth 
 ```
 
 This command will save detection visualizations and metrics to `<your_path_to_outputs>`.
