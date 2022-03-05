@@ -187,4 +187,4 @@ def compute_average_precision(
     # TODO: Replace this stub code.
     # return AveragePrecisionMetric(0.0, PRCurve(torch.zeros(0), torch.zeros(0)))
     prc = compute_precision_recall_curve(frames, threshold)
-    return AveragePrecisionMetric(float(torch.mean(prc.precision)), prc)
+    return AveragePrecisionMetric(compute_area_under_curve(prc), prc)

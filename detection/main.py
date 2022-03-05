@@ -203,7 +203,7 @@ def test(
     data_root: str,
     output_root: str,
     seed: int = 42,
-    num_workers: int = 8,
+    num_workers: int = 6,
     checkpoint_path: Optional[str] = None,
 ) -> None:
     """Visualize the outputs of the detector on Pandaset.
@@ -224,6 +224,8 @@ def test(
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     os.makedirs(output_root, exist_ok=True)
 
+    avg_loss = 0
+
     # setup model
     model_config = DetectionModelConfig()
     model = DetectionModel(model_config)
@@ -231,26 +233,37 @@ def test(
         model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
     model = model.to(device)
 
+    loss_fn = DetectionLossFunction(model_config.loss)
+
     # setup data
     dataset = PandasetDataset(data_root, model_config, test=True)
     dataloader = torch.utils.data.DataLoader(
         dataset, num_workers=num_workers, collate_fn=custom_collate
     )
 
+    print(len(dataloader))
+
     evaluator = Evaluator(ap_thresholds=[2.0, 4.0, 8.0, 16.0])
-    for idx, (bev_lidar, _, labels) in tqdm(enumerate(dataloader)):
+    for idx, (bev_lidar, bev_targets, labels) in tqdm(enumerate(dataloader)):
         model.eval()
+        predictions = model(bev_lidar.to(device))
         detections = model.inference(bev_lidar[0].to(device))
         lidar = bev_lidar[0].sum(0).nonzero().detach().cpu()[:, [1, 0]]
         visualize_detections(lidar, detections, labels[0])
         plt.savefig(f"{output_root}/{idx:03d}.png")
         plt.close("all")
 
+        # Save loss
+        loss, _ = loss_fn(predictions, bev_targets.to(device))
+        avg_loss += loss
         # Evaluate
         evaluator.append(detections.to(torch.device("cpu")), labels[0])
     
+    avg_loss /= len(evaluator)
+
     checkpt = checkpoint_path.split('/')[-1].split('.')[0]
     save_object(evaluator, f"{output_root}/evaluator_" + checkpt + ".pth")
+    save_object(avg_loss, f"{output_root}/avg_loss_" + checkpt + ".pth")
 
     # result = evaluator.evaluate()
     # result_df = result.as_dataframe()
@@ -263,6 +276,14 @@ def test(
 
     # print(result_df)
 
+@torch.no_grad()
+def print_loss(
+    checkpoint_path: str
+) -> None:
+    with open(checkpoint_path, 'rb') as inp:
+        loss = pickle.load(inp)
+    print(loss)
+    return 
 
 @torch.no_grad()
 def evaluate(
