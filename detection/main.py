@@ -250,7 +250,9 @@ def test(
         detections = model.inference(bev_lidar[0].to(device))
         lidar = bev_lidar[0].sum(0).nonzero().detach().cpu()[:, [1, 0]]
         visualize_detections(lidar, detections, labels[0])
-        plt.savefig(f"{output_root}/{idx:03d}.png")
+        #  only save those plots  - save some disk usage
+        if idx in (0, 100, 400, 600): 
+            plt.savefig(f"{output_root}/{idx:03d}.png")
         plt.close("all")
 
         # Save loss
