@@ -264,6 +264,7 @@ def test(
     avg_loss /= len(evaluator)
 
     checkpt = checkpoint_path.split('/')[-1].split('.')[0]
+    
     save_object(evaluator, f"{output_root}/evaluator_" + checkpt + ".pth")
     save_object(avg_loss, f"{output_root}/avg_loss_" + checkpt + ".pth")
 
@@ -289,19 +290,15 @@ def print_loss(
 
 @torch.no_grad()
 def evaluate(
-    data_root: str,
     output_root: str,
     seed: int = 42,
-    num_workers: int = 6,
     checkpoint_path: Optional[str] = None,
 ) -> None:
     """Evaluate the detector on Pandaset and save its metrics.
 
     Args:
-        data_root: The root directory of the Pandaset dataset.
         output_root: The root directory to output visualizations and checkpoints.
         seed: A fixed random seed for reproducibility.
-        num_workers: The number of dataloader workers.
         checkpoint_path: Optionally, whether to initialize the model from a checkpoint.
     """
     random.seed(seed)
