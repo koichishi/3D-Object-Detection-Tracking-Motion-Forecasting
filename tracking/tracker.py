@@ -127,6 +127,7 @@ class Tracker:
             raise ValueError(f"Unknown association method {self.associate_method}")
 
         # TODO: Filter out matches with costs >= self.match_th
+        assign_matrix[cost_matrix >= self.match_th] = 0
 
         return assign_matrix, cost_matrix
 
