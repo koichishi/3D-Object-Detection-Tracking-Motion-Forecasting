@@ -78,7 +78,12 @@ class Tracker:
         cost_matrix = self.cost_matrix(bboxes1, bboxes2)
         assign_matrix = torch.zeros((M, N))
         row_ids, col_ids = greedy_matching(cost_matrix)
-        assign_matrix[row_ids][col_ids] = 1
+        # print("M: {}, N: {}".format(M, N))
+        # print("assign_max shape: ", assign_matrix.shape)
+        # print("cost_max shape: ", cost_matrix.shape)
+        # print("Row ids:", row_ids)
+        # print("Col ids:", col_ids)
+        assign_matrix[row_ids, col_ids] = 1
         return assign_matrix, cost_matrix
 
     def associate_hungarian(
@@ -99,7 +104,7 @@ class Tracker:
         cost_matrix = self.cost_matrix(bboxes1, bboxes2)
         assign_matrix = torch.zeros((M, N))
         row_ids, col_ids = hungarian_matching(cost_matrix)
-        assign_matrix[row_ids][col_ids] = 1
+        assign_matrix[row_ids, col_ids] = 1
         return assign_matrix, cost_matrix
 
     def track_consecutive_frame(
@@ -127,7 +132,8 @@ class Tracker:
             raise ValueError(f"Unknown association method {self.associate_method}")
 
         # TODO: Filter out matches with costs >= self.match_th
-        assign_matrix[cost_matrix >= self.match_th] = 0
+        # print("conditional idx mat: ", (cost_matrix >= self.match_th))
+        assign_matrix.where(torch.tensor(cost_matrix >= self.match_th), torch.tensor(0.0))
 
         return assign_matrix, cost_matrix
 
