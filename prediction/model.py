@@ -29,6 +29,7 @@ class PredictionModel(nn.Module):
     def __init__(self, config: PredictionModelConfig) -> None:
         super().__init__()
 
+        W = config.num_history_timesteps
         # TODO: Implement
         self._encoder = nn.Sequential(
             nn.Linear(num_history_timesteps * 3, 128)
