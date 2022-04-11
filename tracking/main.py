@@ -40,6 +40,8 @@ def track(
         f"Tracking with association method {AssociateMethod(tracker_associate_method)}"
     )
     tracking_results = {}
+    i = 0
+    total = len(tracking_dataset)
     for tracking_data in tqdm(tracking_dataset):
         seq_id = tracking_data.sequence_id
         tracking_inputs = tracking_data.tracking_inputs
@@ -47,6 +49,9 @@ def track(
         tracker = Tracker(
             track_steps=80, associate_method=AssociateMethod(tracker_associate_method)
         )
+        print("Progress: {}/{}".format(i, total))
+        i += 1
+
         tracker.track(tracking_inputs.bboxes, tracking_inputs.scores)
         tracking_pred = Tracklets(tracker.tracks)
         save_dict = {
