@@ -1,3 +1,4 @@
+from cmath import nan
 from dataclasses import dataclass
 from typing import List, Tuple
 
@@ -22,7 +23,10 @@ def compute_l1_loss(targets: Tensor, predictions: Tensor) -> Tensor:
         A scalar MAE loss between `predictions` and `targets`
     """
     # TODO: Implement.
-    # return l1_loss
+    nan_mask = targets == torch.nan
+    l1_loss = torch.norm( ((targets @ nan_mask) * (predictions @ nan_mask)), p=1, dim=-1)
+    assert targets.shape[: -1] == l1_loss.shape
+    return torch.mean(l1_loss, dim=-1)
 
 
 @dataclass

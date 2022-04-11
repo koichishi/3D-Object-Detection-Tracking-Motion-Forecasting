@@ -31,15 +31,17 @@ class PredictionModel(nn.Module):
 
         W = config.num_history_timesteps
         # TODO: Implement
+        # 不太会，按感觉写的
         self._encoder = nn.Sequential(
-            nn.Linear(W, 256),
+            nn.Conv2d(W, 256),
             nn.ReLU(True),
-            nn.Linear(256, 256),
+            nn.Conv2d(256, 256),
             nn.ReLU(True),
-            nn.Linear(256, 128),
+            nn.Conv2d(256, 128),
         )
 
         # TODO: Implement
+        # 不太会，按感觉写的
         self._decoder = nn.Sequential(
             nn.Linear(128, 256),
             nn.ReLU(True),
