@@ -1,7 +1,6 @@
 import numpy as np
 from shapely.geometry import Polygon
 
-
 def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
     """Computes 2D intersection over union of two sets of bounding boxes
 
