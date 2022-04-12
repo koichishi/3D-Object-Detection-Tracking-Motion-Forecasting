@@ -32,13 +32,13 @@ class PredictionModel(nn.Module):
         W = config.num_history_timesteps
         # TODO: Implement
         self._encoder = nn.Sequential(
-            nn.Linear(num_history_timesteps * 3, 128)
+            nn.Linear(config.num_history_timesteps * 3, 128),
             nn.ReLU()
         )
 
         # TODO: Implement
         self._decoder = nn.Sequential(
-            nn.Linear(128, num_label_timesteps * 2)
+            nn.Linear(128, config.num_label_timesteps * 2)
         )
 
     @staticmethod
