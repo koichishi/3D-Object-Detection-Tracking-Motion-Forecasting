@@ -100,7 +100,7 @@ def train(
     output_root: str,
     seed: int = 42,
     batch_size: int = 32,
-    num_workers: int = 8,
+    num_workers: int = 6,
     num_epochs: int = 25,
     log_frequency: int = int(269 // 16),
     learning_rate: float = 1e-4,
@@ -272,7 +272,7 @@ def test(
     data_root: str,
     output_root: str,
     seed: int = 42,
-    num_workers: int = 8,
+    num_workers: int = 6,
     checkpoint_path: Optional[str] = None,
 ) -> None:
     """Visualize the outputs of the detector on Pandaset.
@@ -325,7 +325,7 @@ def evaluate(
     data_root: str,
     output_root: str,
     seed: int = 42,
-    num_workers: int = 8,
+    num_workers: int = 6,
     checkpoint_path: Optional[str] = None,
 ) -> None:
     """Evaluate the detector on Pandaset and save its metrics.
