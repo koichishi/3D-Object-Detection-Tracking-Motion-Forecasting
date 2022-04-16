@@ -52,7 +52,7 @@ def compute_nll_loss(targets: Tensor, predictions: Tensor) -> Tensor:
 
     tmm = torch.unsqueeze(targets - predictions[..., 0:2], dim=3)
 
-    loss = torch.log(torch.norm(cov, dim=(2,3))) + (tmm.transpose(dim0=2,dim1=3) @ cov.inverse() @ tmm).squeeze()
+    loss = torch.log(torch.linalg.det(cov)) + (tmm.transpose(dim0=2,dim1=3) @ cov.inverse() @ tmm).squeeze()
     loss = 0.5 * loss
     loss = torch.sum(loss, dim=1)
     return loss.nanmean()
