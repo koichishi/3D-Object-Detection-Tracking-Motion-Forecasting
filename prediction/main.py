@@ -22,7 +22,7 @@ def overfit(
     data_root: str,
     output_root: str,
     seed: int = 42,
-    num_iterations: int = 500,
+    num_iterations: int = 5000,
     log_frequency: int = 100,
     learning_rate: float = 1e-2,
 ) -> None:
@@ -89,7 +89,7 @@ def overfit(
                 predictions = model.inference(history_tensors[0].to(device)).to("cpu")
             # We copy over the ground truth yaw and boxes for simplicity
             predictions.yaws = labels[0].yaws
-            predictions.boxes = labels[0].boxes
+            #predictions.boxes = labels[0].boxes
             vis_pred_labels(predictions, labels[0])
             plt.savefig(f"{output_root}/predictions.png")
             plt.close("all")
@@ -226,7 +226,7 @@ def train(
                     )
                 # We copy over the ground truth yaw and boxes for simplicity
                 predictions.yaws = labels[0].yaws
-                predictions.boxes = labels[0].boxes
+                #predictions.boxes = labels[0].boxes
                 vis_pred_labels(predictions, labels[0])
                 plt.savefig(f"{output_root}/predictions.png")
                 plt.close("all")
@@ -314,7 +314,7 @@ def test(
         predictions = model.inference(history_tensors[0].to(device)).to("cpu")
         # We copy over the ground truth yaw and boxes for simplicity
         predictions.yaws = labels[0].yaws
-        predictions.boxes = labels[0].boxes
+        #predictions.boxes = labels[0].boxes
         vis_pred_labels(predictions, labels[0])
         plt.savefig(f"{output_root}/{idx:03d}.png")
         plt.close("all")

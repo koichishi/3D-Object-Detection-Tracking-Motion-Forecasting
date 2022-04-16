@@ -8,8 +8,9 @@ from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from detection.utils.visualization import plot_box
+from detection.utils.visualization import plot_box, plot_ellipse
 from prediction.types import Trajectories
+
 
 
 def visualize_trajectories(
@@ -68,6 +69,66 @@ def visualize_trajectories(
     return fig, ax
 
 
+
+
+def visualize_trajectories_ellipse(
+    trajectories: Trajectories,
+    start_color: Tuple[float, float, float],
+    end_color: Tuple[float, float, float],
+    name: str,
+    fig: Figure,
+    ax: Axes,
+) -> Tuple[Figure, Axes]:
+    """Plots a frame of detections and ground truth labels.
+
+    Args:
+        trajectories: [N, T, 2] trajectories to display. Each final coordinate is the (x,y) at that timestep T
+        color: color to display the trajectories in (R, G, B)
+
+    Returns:
+        Matplotlib figure and axis. `fig.show()` will display result.
+    """
+
+    # Plot trajectories
+    centroids_x = trajectories.centroids_x
+    centroids_y = trajectories.centroids_y
+    yaws = trajectories.yaws
+    boxes_x = trajectories.boxes_x
+    boxes_y = trajectories.boxes_y
+
+    colors = []
+    for ix in range(centroids_x.shape[0]):
+        for t in range(centroids_x.shape[1]):
+            ratio = t / (centroids_x.shape[1] - 0.999)
+            new_color = (
+                start_color[0] * (1 - ratio) + end_color[0] * ratio,
+                start_color[1] * (1 - ratio) + end_color[1] * ratio,
+                start_color[2] * (1 - ratio) + end_color[2] * ratio,
+                0.3,
+            )
+            plot_ellipse(
+                ax,
+                centroids_x[ix, t].item(),
+                centroids_y[ix, t].item(),
+                yaws[ix, t].item(),
+                boxes_x[ix, t].item(),
+                boxes_y[ix, t].item(),
+                new_color,
+                name,
+            )
+            colors.append(new_color)
+
+    axins1 = inset_axes(ax, width="10%", height="4%", loc="upper left")
+    cmap = LinearSegmentedColormap.from_list(name, [start_color, end_color])
+    norm = Normalize(vmin=0, vmax=trajectories.centroids_x.shape[1])
+    cb1 = ColorbarBase(axins1, cmap=cmap, norm=norm, orientation="horizontal")
+    cb1.set_label(name)
+
+    return fig, ax
+
+
+
+
 def vis_pred_labels(
     pred_trajectories: Trajectories,
     label_trajectories: Trajectories,
@@ -81,7 +142,7 @@ def vis_pred_labels(
     start_label_color = (0.0, 0.0, 1.0)
     end_label_color = (1.0, 0.0, 1.0)
 
-    visualize_trajectories(
+    visualize_trajectories_ellipse(
         pred_trajectories,
         start_pred_color,
         end_pred_color,
