@@ -133,7 +133,9 @@ class Tracker:
 
         # TODO: Filter out matches with costs >= self.match_th
         # print("conditional idx mat: ", (cost_matrix >= self.match_th))
-        assign_matrix.where(torch.tensor(cost_matrix >= self.match_th), torch.tensor(0.0))
+        assign_matrix = torch.where(torch.tensor(cost_matrix >= self.match_th), 
+                                    torch.tensor(0.0), assign_matrix 
+                                    )
 
         return assign_matrix, cost_matrix
 
