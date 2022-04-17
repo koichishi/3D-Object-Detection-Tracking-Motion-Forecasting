@@ -50,12 +50,16 @@ def compute_nll_loss(targets: Tensor, predictions: Tensor) -> Tensor:
     cov2 = torch.stack((rhos * predictions[:,:,3:4] * predictions[:,:,4:5], predictions[:,:,4:5] ** 2), dim=3)
     cov = torch.cat((cov1, cov2), dim=2)
 
-    tmm = torch.unsqueeze(targets - predictions[..., 0:2], dim=3)
+    '''tmm = torch.unsqueeze(targets - predictions[..., 0:2], dim=3)
+    cov_det = torch.linalg.det(cov).clamp(min=1e-06)
 
-    loss = torch.log(torch.linalg.det(cov)) + (tmm.transpose(dim0=2,dim1=3) @ cov.inverse() @ tmm).squeeze()
+    loss = torch.log(cov_det) + (tmm.transpose(dim0=2,dim1=3) @ cov.inverse() @ tmm).squeeze()
     loss = 0.5 * loss
     loss = torch.sum(loss, dim=1)
-    return loss.nanmean()
+    return loss.nanmean()'''
+
+    gaussian = nn.GaussianNLLLoss()
+    return gaussian(predictions[..., 0:2], targets, torch.linalg.det(cov).clamp(min=0))
 
 
 @dataclass
