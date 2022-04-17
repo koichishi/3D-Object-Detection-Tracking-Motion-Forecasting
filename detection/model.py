@@ -123,14 +123,11 @@ class DetectionModel(nn.Module):
 
         D, H, W = bev_lidar.shape
         # step 1
-        # print("XXX, inference")
         predictions = self.forward(torch.reshape(bev_lidar, (1,D,H,W)))[0]
 
         # setp 2
-        # print("predictions[0]: " + str(predictions[0]))
         max_pool = torch.nn.MaxPool2d(kernel_size=5, stride=1, padding=2)
         k_local_max = max_pool(predictions[None,0,:,:])
-        # print(k_local_max)
         k_local_max[k_local_max != predictions[None,0,:,:]] = 0
 
         print("number of local max 1: ", torch.count_nonzero(k_local_max))
@@ -144,14 +141,8 @@ class DetectionModel(nn.Module):
         k_local_max = torch.cat((k_indicies[:,None] % int(W), k_indicies[:,None] // int(W)), dim=1)
 
         # step 3
-        # offset_x = torch.gather(torch.flatten(predictions[None,1,:,:]), 0, k_indicies)
-        # offset_y = torch.gather(torch.flatten(predictions[None,2,:,:]), 0, k_indicies)
         offset_x = predictions[1][k_local_max[:,1], k_local_max[:,0]]
         offset_y = predictions[2][k_local_max[:,1], k_local_max[:,0]]
-        # print("offset_x shape: " + str(offset_x.shape) + str(offset_x.type()))
-        # print("offset_y shape: " + str(offset_y.shape) + str(offset_y.type()))
-        # print("offset_x: " + str(offset_x))
-        # print("offset_y: " + str(offset_y))
         centroids = torch.cat((torch.flatten(offset_x)[:,None], torch.flatten(offset_y)[:,None]), dim=1) + k_local_max
         # print("centroids shape " + str(centroids.shape))
 
@@ -162,16 +153,12 @@ class DetectionModel(nn.Module):
         '''
 
         # step 4
-        # x_size = torch.gather(torch.flatten(predictions[None,3,:,:]), 0, k_indicies)
-        # y_size = torch.gather(torch.flatten(predictions[None,4,:,:]), 0, k_indicies)
         x_size = predictions[3][k_local_max[:,1], k_local_max[:,0]]
         y_size = predictions[4][k_local_max[:,1], k_local_max[:,0]]
         boxes = torch.cat((torch.flatten(x_size)[:,None], torch.flatten(y_size)[:,None]), dim=1)
         # print("boxes" + str(boxes.shape))
 
         # step 5
-        # sin_theta = torch.gather(torch.flatten(predictions[None,5,:,:]), 0, k_indicies)
-        # cos_theta = torch.gather(torch.flatten(predictions[None,6,:,:]), 0, k_indicies)
         sin_theta = predictions[5][k_local_max[:,1], k_local_max[:,0]]
         cos_theta = predictions[6][k_local_max[:,1], k_local_max[:,0]]
         yaws = torch.atan2(torch.flatten(sin_theta), torch.flatten(cos_theta))

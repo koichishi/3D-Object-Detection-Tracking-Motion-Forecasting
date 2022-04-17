@@ -1,5 +1,7 @@
 import numpy as np
+import torch
 from shapely.geometry import Polygon
+from detection.types import Detections
 
 def Ciou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
     """Computes 2D intersection over union of two sets of bounding boxes
@@ -49,7 +51,7 @@ def Ciou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
             alpha = v / ((1 - iou) + v)
             penalty_mat[i1][i2] = euc_dist2 / c ** 2 + alpha * v
 
-    return iou_mat, penalty_mat
+    return iou_mat - penalty_mat
 
 
 def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:

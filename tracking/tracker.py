@@ -60,11 +60,32 @@ class Tracker:
         # cost_matrix = torch.ones((M, N))
 
         # CIoU
-        # iou, penalty = Ciou_2d(bboxes1, bboxes2)
-        # return 1 - iou + penalty 
+        # iou_penalty = Ciou_2d(bboxes1, bboxes2)
+        # return 1 - iou_penalty
         
-        # Original
+        # Original and Velocity Prediction
         return 1 - iou_2d(bboxes1, bboxes2)
+
+    def velocity_prediction(self, prev_bbox_ids):
+        # TODO: Implementation
+        velocities = []
+        for track_id in prev_bbox_ids:
+            tracklet = self.tracks[track_id].bboxes_traj
+            cur_bbox = tracklet[-1][: 2] # Only keep centroid
+            if len(tracklet) > 1:
+                prev_bbox = tracklet[-2][: 2] # Only keep centroid
+            else:
+                prev_bbox = 0
+            velocities.append(cur_bbox - prev_bbox)
+        # Padding back to Mx5
+        pad = torch.nn.ZeroPad2d((0, 3, 0, 0))
+        velocities = pad(torch.stack(velocities))
+        # print(velocities)
+        return velocities
+
+    def bbox_prediction(self, velocities: Tensor, position: Tensor):
+        # TODO: Implementation
+        return position + velocities
 
     def associate_greedy(
         self, bboxes1: Tensor, bboxes2: Tensor
@@ -114,7 +135,7 @@ class Tracker:
         return assign_matrix, cost_matrix
 
     def track_consecutive_frame(
-        self, bboxes1: Tensor, bboxes2: Tensor
+        self, bboxes1: Tensor, bboxes2: Tensor, predicted_bboxes2=None
     ) -> Tuple[Tensor, Tensor]:
         """This function tracks the bboxes2 in the current frame against bboxes1 in the previous frame,
         by associating bboxes1 and bboxes2 with associate_method, and filtering out the associations with
@@ -123,6 +144,7 @@ class Tracker:
         Args:
             bboxes1: bounding box set of shape [M, 5]
             bboxes2: bounding box set of shape [N, 5]
+            predicted_bboxes2: bounding box set of shape [M, 5]
         Returns:
             assign_matrix: binary assignment matrix of shape [M, N], where A[i,j] = 1 means i-th box in bboxes1
             and j-th box in bboxes2 are associated. For any 0 <= i < M, sum_{0 <= j < n}(A[i,j]) is either 0
@@ -130,6 +152,10 @@ class Tracker:
             then bboxes2[j] is the start of a new tracklet.
             cost_matrix: cost matrix of shape [M, N]
         """
+        # TODO: Change if not improvement
+        if predicted_bboxes2 is not None:
+            bboxes1 = predicted_bboxes2
+
         if self.associate_method == AssociateMethod.GREEDY:
             assign_matrix, cost_matrix = self.associate_greedy(bboxes1, bboxes2)
         elif self.associate_method == AssociateMethod.HUNGARIAN:
@@ -139,7 +165,11 @@ class Tracker:
 
         # TODO: Filter out matches with costs >= self.match_th
         # print("conditional idx mat: ", (cost_matrix >= self.match_th))
-        assign_matrix.where(torch.tensor(cost_matrix >= self.match_th), torch.tensor(0.0))
+        # print(self.match_th)
+        assign_matrix = torch.where(torch.tensor(cost_matrix) >= self.match_th, 
+                    torch.tensor(0.0), assign_matrix)
+        # print(np.any(cost_matrix < self.match_th))
+        # print(assign_matrix)
 
         return assign_matrix, cost_matrix
 
@@ -168,8 +198,12 @@ class Tracker:
             if scores_seq is not None:
                 prev_bboxes = prev_bboxes[scores_seq[frame_id - 1] >= self.min_score]
                 cur_bboxes = cur_bboxes[scores_seq[frame_id] >= self.min_score]
+            # TODO: improvement: velocity prediction based cost matrix
+            predicted_velocities = self.velocity_prediction(cur_frame_track_ids)
+            predicted_cur_bboxes = self.bbox_prediction(predicted_velocities, prev_bboxes)
+            # TODO: improvement: velocity prediction based cost matrix
             assign_matrix, cost_matrix = self.track_consecutive_frame(
-                prev_bboxes, cur_bboxes
+                prev_bboxes, cur_bboxes #, predicted_cur_bboxes
             )
             prev_frame_track_ids = deepcopy(cur_frame_track_ids)
             cur_frame_track_ids = []
