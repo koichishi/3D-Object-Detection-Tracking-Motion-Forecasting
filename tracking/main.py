@@ -20,7 +20,7 @@ def hyperparameter_tuning(
     result_path="tracking/tracking_results/",
     tracker_associate_method=AssociateMethod.HUNGARIAN,
 ):
-    hyperparameter_range = np.arange(0, 2, 0.1)
+    hyperparameter_range = np.arange(0, 1, 0.1)
     print("Hyperparameter Tuning")
     print(f"Loading Pandaset from {dataset_path}")
     print(f"Loading dumped detection results from {detection_path}")

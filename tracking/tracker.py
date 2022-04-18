@@ -207,7 +207,7 @@ class Tracker:
             predicted_cur_bboxes = self.bbox_prediction(predicted_velocities, prev_bboxes)
             # TODO: improvement: velocity prediction based cost matrix
             assign_matrix, cost_matrix = self.track_consecutive_frame(
-                prev_bboxes, cur_bboxes #, predicted_cur_bboxes
+                prev_bboxes, cur_bboxes, predicted_cur_bboxes
             )
             # TODO: Keep track of assignment difference of greedy and Hungarian
             # total_assign_diff.append(assign_diff)
