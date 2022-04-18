@@ -162,16 +162,19 @@ class Tracker:
             assign_matrix, cost_matrix = self.associate_hungarian(bboxes1, bboxes2)
         else:
             raise ValueError(f"Unknown association method {self.associate_method}")
+        # assign_matrix, _ = self.associate_greedy(bboxes1, bboxes2)
+        # assign_matrix1, cost_matrix = self.associate_hungarian(bboxes1, bboxes2)
 
         # TODO: Filter out matches with costs >= self.match_th
-        # print("conditional idx mat: ", (cost_matrix >= self.match_th))
-        # print(self.match_th)
-        assign_matrix = torch.where(torch.tensor(cost_matrix) >= self.match_th, 
-                    torch.tensor(0.0), assign_matrix)
-        # print(np.any(cost_matrix < self.match_th))
-        # print(assign_matrix)
+        # assign_matrix = torch.where(torch.tensor(cost_matrix) >= self.match_th, 
+        #             torch.tensor(0.0), assign_matrix)
+        # assign_matrix1 = torch.where(torch.tensor(cost_matrix) >= self.match_th, 
+        #             torch.tensor(0.0), assign_matrix1)
+        
+        # print("assignments the same? ", torch.equal(assign_matrix1, assign_matrix))
+        # assign_diff = torch.equal(assign_matrix1, assign_matrix)
 
-        return assign_matrix, cost_matrix
+        return assign_matrix, cost_matrix  #, assign_diff
 
     def track(self, bboxes_seq: List[Tensor], scores_seq: List[Tensor]):
         """Perform tracking given a sequence of bboxes and bbox confidence scores.
@@ -184,6 +187,7 @@ class Tracker:
             None
         """
         # Track first frame by starting a tracklet for every bbox in the frame
+        # total_assign_diff = []
         cur_frame_track_ids = []
         for idx, bbox in enumerate(bboxes_seq[0]):
             if scores_seq is not None and scores_seq[0][idx] < self.min_score:
@@ -205,6 +209,9 @@ class Tracker:
             assign_matrix, cost_matrix = self.track_consecutive_frame(
                 prev_bboxes, cur_bboxes #, predicted_cur_bboxes
             )
+            # TODO: Keep track of assignment difference of greedy and Hungarian
+            # total_assign_diff.append(assign_diff)
+
             prev_frame_track_ids = deepcopy(cur_frame_track_ids)
             cur_frame_track_ids = []
             prev_bbox_ids, cur_bbox_ids = np.where(assign_matrix)
@@ -220,3 +227,5 @@ class Tracker:
                 else:
                     track_id = self.create_new_tracklet(frame_id, cur_bboxes[j], 0)
                 cur_frame_track_ids.append(track_id)
+
+        # print("Avg assignment difference (greedy and Hung) rate: ", sum(total_assign_diff) / len(total_assign_diff))

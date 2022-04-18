@@ -17,18 +17,17 @@ def greedy_matching(cost_matrix: np.ndarray) -> Tuple[List, List]:
         assignment corresponds to costs[0, 3], costs[1, 1] and costs[2, 0].
     """
     # TODO: Replace this stub code.
-    # row_ids = []
-    # col_ids = []
     cost_matrix = cost_matrix.copy()
+    row_ids = []
+    col_ids = []
     ids_len = np.min(cost_matrix.shape)
-    # while len(row_ids) < ids_len:
-    #     row, col = np.unravel_index(cost_matrix.argmin(), cost_matrix.shape)
-    #     cost_matrix[row,:] = 1e10
-    #     cost_matrix[:,col] = 1e10
-    #     row_ids.append(row)
-    #     col_ids.append(col)
-    # return row_ids, col_ids
-    return np.unravel_index(cost_matrix.argpartition(ids_len-1)[: ids_len], cost_matrix.shape)
+    while len(row_ids) < ids_len:
+        row, col = np.unravel_index(cost_matrix.argmin(), cost_matrix.shape)
+        cost_matrix[row,:] = np.inf
+        cost_matrix[:,col] = np.inf
+        row_ids.append(row)
+        col_ids.append(col)
+    return row_ids, col_ids
 
 
 def hungarian_matching(cost_matrix: np.ndarray) -> Tuple[List, List]:

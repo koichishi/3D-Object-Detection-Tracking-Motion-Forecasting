@@ -20,7 +20,7 @@ def hyperparameter_tuning(
     result_path="tracking/tracking_results/",
     tracker_associate_method=AssociateMethod.HUNGARIAN,
 ):
-    hyperparameter_range = np.arange(0, 6, 2) # best mean motp, median motp&mota 2.25
+    hyperparameter_range = np.arange(0, 2, 0.1)
     print("Hyperparameter Tuning")
     print(f"Loading Pandaset from {dataset_path}")
     print(f"Loading dumped detection results from {detection_path}")
@@ -172,7 +172,7 @@ def visualize(result_path="tracking/tracking_results/results.pkl"):
         plt.close("all")
 
 
-def evaluate(result_path="tracking/tracking_results/results.pkl"):
+def evaluate(result_path):
     with open(result_path, "rb") as f:
         results_dict = pickle.load(f)
 
