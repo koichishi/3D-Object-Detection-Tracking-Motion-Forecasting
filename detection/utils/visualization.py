@@ -82,7 +82,7 @@ def plot_ellipse(
     )
 
     # Plot orientation arrow
-    ax.add_patch(
+    '''ax.add_patch(
         Arrow(
             x,
             y,
@@ -93,7 +93,7 @@ def plot_ellipse(
             capstyle="projecting",
             lw=1,
         )
-    )
+    )'''
 
 
 def visualize_detections(

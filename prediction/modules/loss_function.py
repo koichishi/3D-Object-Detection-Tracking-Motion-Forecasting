@@ -44,11 +44,11 @@ def compute_nll_loss(targets: Tensor, predictions: Tensor) -> Tensor:
 
     targets = torch.where(targets.isnan(), torch.tensor(0, dtype=targets.dtype), targets)
 
-    relu = nn.ReLU()
+    #relu = nn.ReLU()
     #predictions = relu(predictions)
 
-    #rhos = torch.clamp(predictions[:,:,2:3], min=-1.0, max=1.0)
-    rhos = 0
+    rhos = torch.clamp(predictions[:,:,2:3], min=-1.0, max=1.0)
+    #rhos = 0
 
     cov1 = torch.stack((predictions[:,:,3:4] ** 2, rhos * predictions[:,:,3:4] * predictions[:,:,4:5]), dim=3)
     cov2 = torch.stack((rhos * predictions[:,:,3:4] * predictions[:,:,4:5], predictions[:,:,4:5] ** 2), dim=3)
@@ -63,8 +63,8 @@ def compute_nll_loss(targets: Tensor, predictions: Tensor) -> Tensor:
     return loss.nanmean()'''
 
     gaussian = nn.GaussianNLLLoss(reduction='sum')
-    #return gaussian(predictions[..., 0:2], targets, torch.linalg.det(cov).clamp(min=0))
-    return gaussian(predictions[..., 0:2], targets, relu(predictions[..., 3:5]))
+    return gaussian(predictions[..., 0:2], targets, torch.linalg.det(cov).clamp(min=0))
+    #return gaussian(predictions[..., 0:2], targets, relu(predictions[..., 3:5]))
 
 
 @dataclass

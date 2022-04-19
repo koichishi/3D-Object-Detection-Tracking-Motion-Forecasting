@@ -31,12 +31,16 @@ class PredictionModel(nn.Module):
 
         W = config.num_history_timesteps
         # TODO: Implement
+        #self._embedding = nn.Linear(config.num_history_timesteps * 3, config.num_history_timesteps * 8)
+
         self._M = nn.Linear(config.num_history_timesteps * 3, config.num_history_timesteps * 3)
         self._U = nn.Linear(config.num_history_timesteps * 3, config.num_history_timesteps * 3)
         self._sig = nn.ReLU()
 
         self._encoder = nn.Sequential(
-            nn.Linear(config.num_history_timesteps * 3, 128),
+            nn.Linear(config.num_history_timesteps * 3, 64),
+            nn.ReLU(),
+            nn.Linear(64, 128),
             nn.ReLU()
         )
 
@@ -137,8 +141,9 @@ class PredictionModel(nn.Module):
         """
         x, batch_ids, original_x_pose = self._preprocess(x_batches)
         A = torch.eye(x.shape[0])
-        x = self._sig(self._U(x) + self._M(A @ x))
-        x = self._sig(self._U(x) + self._M(A @ x))
+        #A = torch.FloatTensor(torch.ones(x.shape[0], x.shape[0]))
+        x = self._sig(self._U(x) + (A @ self._M(x)))
+        #x = self._sig(self._U(x) + (A @ self._M(x)))
 
         out = self._decoder(self._encoder(x))
         out_batches = self._postprocess(out, batch_ids, original_x_pose)

@@ -89,7 +89,7 @@ def overfit(
                 predictions = model.inference(history_tensors[0].to(device)).to("cpu")
             # We copy over the ground truth yaw and boxes for simplicity
             predictions.yaws = labels[0].yaws
-            #predictions.boxes = labels[0].boxes
+            predictions.boxes = labels[0].boxes
             vis_pred_labels(predictions, labels[0])
             plt.savefig(f"{output_root}/predictions.png")
             plt.close("all")
