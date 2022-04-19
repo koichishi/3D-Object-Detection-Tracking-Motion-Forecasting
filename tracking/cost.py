@@ -65,6 +65,9 @@ def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
         You should use the Polygon class from the shapely package to compute the area of intersection/union.
     """
     M, N = bboxes1.shape[0], bboxes2.shape[0]
+
+
+
     # TODO: Replace this stub code.
     iou_mat = np.zeros((M, N))
     for i1 in range(M):
@@ -73,6 +76,7 @@ def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
             x2, y2, w2, l2, yaw2 = bboxes2[i2][0], bboxes2[i2][1], bboxes2[i2][3], bboxes2[i2][2], bboxes2[i2][4]
             xw1, xh1, yw1, yh1 = 0.5*l1*np.cos(yaw1), 0.5*w1*np.sin(yaw1), 0.5*l1*np.sin(yaw1), 0.5*w1*np.cos(yaw1)
             xw2, xh2, yw2, yh2 = 0.5*l2*np.cos(yaw2), 0.5*w2*np.sin(yaw2), 0.5*l2*np.sin(yaw2), 0.5*w2*np.cos(yaw2)
+
             b1 = Polygon([
                 (x1-xw1+xh1,y1-yw1-yh1), 
                 (x1-xw1-xh1,y1-yw1+yh1), 
@@ -89,4 +93,5 @@ def iou_2d(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
             a_union = b1.union(b2).area
             iou_mat[i1][i2] = a_overlap/a_union
 
+    # print(np.any(iou_mat < 0))
     return iou_mat

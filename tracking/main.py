@@ -20,7 +20,7 @@ def hyperparameter_tuning(
     result_path="tracking/tracking_results/",
     tracker_associate_method=AssociateMethod.HUNGARIAN,
 ):
-    hyperparameter_range = np.arange(0, 1, 0.1)
+    hyperparameter_range = np.arange(0.0, 3.1, 0.1)
     print("Hyperparameter Tuning")
     print(f"Loading Pandaset from {dataset_path}")
     print(f"Loading dumped detection results from {detection_path}")
@@ -127,7 +127,7 @@ def track(
         tracker = Tracker(
             track_steps=80, associate_method=AssociateMethod(tracker_associate_method),
             # TODO: uncomment when applying CIoU
-            # match_th=2.25 # For CIoU
+            # match_th=2.1
         )
         print("Progress: {}/{}".format(i, total))
         i += 1

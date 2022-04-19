@@ -59,15 +59,14 @@ class Tracker:
         # M, N = bboxes1.shape[0], bboxes2.shape[0]
         # cost_matrix = torch.ones((M, N))
 
-        # CIoU
+        # improvement: uncomment when applying CIoU
         # iou_penalty = Ciou_2d(bboxes1, bboxes2)
         # return 1 - iou_penalty
         
-        # Original and Velocity Prediction
+        # improvement: uncomment when applying velocity predition or original implementation
         return 1 - iou_2d(bboxes1, bboxes2)
 
     def velocity_prediction(self, prev_bbox_ids):
-        # TODO: Implementation
         velocities = []
         for track_id in prev_bbox_ids:
             tracklet = self.tracks[track_id].bboxes_traj
@@ -84,7 +83,6 @@ class Tracker:
         return velocities
 
     def bbox_prediction(self, velocities: Tensor, position: Tensor):
-        # TODO: Implementation
         return position + velocities
 
     def associate_greedy(
@@ -105,11 +103,6 @@ class Tracker:
         cost_matrix = self.cost_matrix(bboxes1, bboxes2)
         assign_matrix = torch.zeros((M, N))
         row_ids, col_ids = greedy_matching(cost_matrix)
-        # print("M: {}, N: {}".format(M, N))
-        # print("assign_max shape: ", assign_matrix.shape)
-        # print("cost_max shape: ", cost_matrix.shape)
-        # print("Row ids:", row_ids)
-        # print("Col ids:", col_ids)
         assign_matrix[row_ids, col_ids] = 1
         return assign_matrix, cost_matrix
 
@@ -152,7 +145,6 @@ class Tracker:
             then bboxes2[j] is the start of a new tracklet.
             cost_matrix: cost matrix of shape [M, N]
         """
-        # TODO: Change if not improvement
         if predicted_bboxes2 is not None:
             bboxes1 = predicted_bboxes2
 
@@ -162,19 +154,20 @@ class Tracker:
             assign_matrix, cost_matrix = self.associate_hungarian(bboxes1, bboxes2)
         else:
             raise ValueError(f"Unknown association method {self.associate_method}")
+
+        # TODO: uncomment if check association similarity rates between the two algorithm
         # assign_matrix, _ = self.associate_greedy(bboxes1, bboxes2)
         # assign_matrix1, cost_matrix = self.associate_hungarian(bboxes1, bboxes2)
 
         # TODO: Filter out matches with costs >= self.match_th
-        # assign_matrix = torch.where(torch.tensor(cost_matrix) >= self.match_th, 
-        #             torch.tensor(0.0), assign_matrix)
+        assign_matrix = torch.where(torch.tensor(cost_matrix >= self.match_th), 
+                    torch.tensor(0.0), assign_matrix)
+        # TODO: uncomment if check association similarity rates between the two algorithm
         # assign_matrix1 = torch.where(torch.tensor(cost_matrix) >= self.match_th, 
         #             torch.tensor(0.0), assign_matrix1)
-        
         # print("assignments the same? ", torch.equal(assign_matrix1, assign_matrix))
         # assign_diff = torch.equal(assign_matrix1, assign_matrix)
-
-        return assign_matrix, cost_matrix  #, assign_diff
+        return assign_matrix, cost_matrix#, assign_diff
 
     def track(self, bboxes_seq: List[Tensor], scores_seq: List[Tensor]):
         """Perform tracking given a sequence of bboxes and bbox confidence scores.
@@ -186,8 +179,7 @@ class Tracker:
         Returns:
             None
         """
-        # Track first frame by starting a tracklet for every bbox in the frame
-        # total_assign_diff = []
+        total_assign_diff = []
         cur_frame_track_ids = []
         for idx, bbox in enumerate(bboxes_seq[0]):
             if scores_seq is not None and scores_seq[0][idx] < self.min_score:
@@ -205,11 +197,11 @@ class Tracker:
             # TODO: improvement: velocity prediction based cost matrix
             predicted_velocities = self.velocity_prediction(cur_frame_track_ids)
             predicted_cur_bboxes = self.bbox_prediction(predicted_velocities, prev_bboxes)
-            # TODO: improvement: velocity prediction based cost matrix
+            # TODO: improvement: uncomment when applying motion feature
             assign_matrix, cost_matrix = self.track_consecutive_frame(
-                prev_bboxes, cur_bboxes, predicted_cur_bboxes
+                prev_bboxes, cur_bboxes#, predicted_cur_bboxes
             )
-            # TODO: Keep track of assignment difference of greedy and Hungarian
+            # TODO: uncomment if check association similarity rates between the two algorithm
             # total_assign_diff.append(assign_diff)
 
             prev_frame_track_ids = deepcopy(cur_frame_track_ids)
@@ -227,5 +219,5 @@ class Tracker:
                 else:
                     track_id = self.create_new_tracklet(frame_id, cur_bboxes[j], 0)
                 cur_frame_track_ids.append(track_id)
-
+        # TODO: uncomment if check association similarity rates between the two algorithm
         # print("Avg assignment difference (greedy and Hung) rate: ", sum(total_assign_diff) / len(total_assign_diff))
