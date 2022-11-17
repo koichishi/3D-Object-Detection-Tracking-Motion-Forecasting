@@ -264,23 +264,9 @@ def test(
     avg_loss /= len(evaluator)
 
     checkpt = checkpoint_path.split('/')[-1].split('.')[0]
-<<<<<<< HEAD
-=======
     
->>>>>>> origin/m1-2.3
     save_object(evaluator, f"{output_root}/evaluator_" + checkpt + ".pth")
     save_object(avg_loss, f"{output_root}/avg_loss_" + checkpt + ".pth")
-
-    # result = evaluator.evaluate()
-    # result_df = result.as_dataframe()
-    # with open(f"{output_root}/evaluation.csv", "w") as f:
-    #     f.write(result_df.to_csv())
-
-    # result.visualize()
-    # plt.savefig(f"{output_root}/evaluation.png")
-    # plt.close("all")
-
-    # print(result_df)
 
 @torch.no_grad()
 def print_loss(
