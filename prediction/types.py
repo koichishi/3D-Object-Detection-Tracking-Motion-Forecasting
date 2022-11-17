@@ -10,7 +10,7 @@ class Trajectories:
     Args:
         centroids: [N x T x 2] centroids tensor. Each row is (x, y).
         yaws: [N x T] rotations in radians tensor.
-        boxes: [N x 2] boxes tensor. Each row is (x_size, y_size).
+        boxes: [N x T x 2] or [N x 2] boxes tensor. Each row is (x_size, y_size).
     """
 
     centroids: torch.Tensor
@@ -30,12 +30,16 @@ class Trajectories:
     @property
     def boxes_x(self) -> torch.Tensor:
         """Return the x-axis bounding box size."""
-        return self.expanded_boxes[:, :, 0]
+        if len(self.boxes.shape) == 2:
+            return self.expanded_boxes[:, :, 0]
+        return self.boxes[:, :, 0]
 
     @property
     def boxes_y(self) -> torch.Tensor:
         """Return the y-axis bounding box size."""
-        return self.expanded_boxes[:, :, 1]
+        if len(self.boxes.shape) == 2:
+            return self.expanded_boxes[:, :, 1]
+        return self.boxes[:, :, 1]
 
     @property
     def flattened_centroids(self) -> torch.Tensor:

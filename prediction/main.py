@@ -22,8 +22,8 @@ def overfit(
     data_root: str,
     output_root: str,
     seed: int = 42,
-    num_iterations: int = 500,
-    log_frequency: int = 100,
+    num_iterations: int = 20000,
+    log_frequency: int = 1000,
     learning_rate: float = 1e-2,
 ) -> None:
     """Overfit predictor to one frame of the Pandaset dataset.
@@ -226,14 +226,13 @@ def train(
                     )
                 # We copy over the ground truth yaw and boxes for simplicity
                 predictions.yaws = labels[0].yaws
-                predictions.boxes = labels[0].boxes
+                #predictions.boxes = labels[0].boxes
                 vis_pred_labels(predictions, labels[0])
                 plt.savefig(f"{output_root}/predictions.png")
                 plt.close("all")
 
         torch.save(model.state_dict(), f"{output_root}/{epoch:03d}.pth")
-        scheduler.step()
-
+        scheduler.step() 
         # Get test metrics
         evaluator = Evaluator()
         for _, (history_tensors, _, labels) in tqdm(enumerate(test_dataloader)):
@@ -314,7 +313,7 @@ def test(
         predictions = model.inference(history_tensors[0].to(device)).to("cpu")
         # We copy over the ground truth yaw and boxes for simplicity
         predictions.yaws = labels[0].yaws
-        predictions.boxes = labels[0].boxes
+        #predictions.boxes = labels[0].boxes
         vis_pred_labels(predictions, labels[0])
         plt.savefig(f"{output_root}/{idx:03d}.png")
         plt.close("all")

@@ -31,14 +31,22 @@ class PredictionModel(nn.Module):
 
         W = config.num_history_timesteps
         # TODO: Implement
+        #self._embedding = nn.Linear(config.num_history_timesteps * 3, config.num_history_timesteps * 8)
+
+        self._M = nn.Linear(config.num_history_timesteps * 3, config.num_history_timesteps * 3)
+        self._U = nn.Linear(config.num_history_timesteps * 3, config.num_history_timesteps * 3)
+        self._sig = nn.ReLU()
+
         self._encoder = nn.Sequential(
-            nn.Linear(config.num_history_timesteps * 3, 128),
+            nn.Linear(config.num_history_timesteps * 3, 64),
+            nn.ReLU(),
+            nn.Linear(64, 128),
             nn.ReLU()
         )
 
         # TODO: Implement
         self._decoder = nn.Sequential(
-            nn.Linear(128, config.num_label_timesteps * 2)
+            nn.Linear(128, config.num_label_timesteps * 5)
         )
 
     @staticmethod
@@ -93,26 +101,32 @@ class PredictionModel(nn.Module):
         3. Unflatten batch and actor dimension
 
         Args:
-            out (Tensor): predicted input trajectories [batch_size * N x T * 2]
+            out (Tensor): predicted input trajectories [batch_size * N x T * 5]
             batch_ids (Tensor): id of each actor's batch in the flattened list [batch_size * N]
             original_x_pose (Tensor): original position and yaw of each actor at the latest timestep in SDV frame
                 [batch_size * N, 3]
 
         Returns:
-            List[Tensor]: List of length batch_size of output predicted trajectories in SDV frame [N x T x 2]
+            List[Tensor]: List of length batch_size of output predicted trajectories in SDV frame [N x T x 5]
         """
-        num_actors = len(batch_ids)
-        out = out.reshape(num_actors, -1, 2)  # [batch_size * N x T x 2]
+        #num_actors = len(batch_ids)
+        #out = out.reshape(num_actors, -1, 2)  # [batch_size * N x T x 2]
 
         # Transform from actor frame, to make the prediction problem easier
-        transformed_out = transform_using_actor_frame(
-            out, original_x_pose, translate_to=False
-        )
+        #transformed_out = transform_using_actor_frame(
+        #    out, original_x_pose, translate_to=False
+        #)
 
         # Translate so that latest timestep for each actor is the origin
 
-        out_batches = unflatten_batch(transformed_out, batch_ids)
-        return out_batches
+        #out_batches = unflatten_batch(transformed_out, batch_ids)
+        #return out_batches
+        num_actors = len(batch_ids)
+        out = out.reshape(num_actors, -1, 5)
+        out[..., 0:2] = transform_using_actor_frame(
+            out[..., 0:2], original_x_pose, translate_to=False
+        )
+        return unflatten_batch(out, batch_ids)
 
     def forward(self, x_batches: List[Tensor]) -> List[Tensor]:
         """Perform a forward pass of the model's neural network.
@@ -126,8 +140,14 @@ class PredictionModel(nn.Module):
                 centroid outputs.
         """
         x, batch_ids, original_x_pose = self._preprocess(x_batches)
+        A = torch.eye(x.shape[0])
+        #A = torch.FloatTensor(torch.ones(x.shape[0], x.shape[0]))
+        x = self._sig(self._U(x) + (A @ self._M(x)))
+        #x = self._sig(self._U(x) + (A @ self._M(x)))
+
         out = self._decoder(self._encoder(x))
         out_batches = self._postprocess(out, batch_ids, original_x_pose)
+
         return out_batches
 
     @torch.no_grad()
@@ -142,12 +162,17 @@ class PredictionModel(nn.Module):
             A set of 2D future trajectory centroid predictions.
         """
         self.eval()
-        pred = self.forward([history])[0]  # shape: B * N x T x 2
+        pred = self.forward([history])[0]  # shape: B * N x T x 5
         num_timesteps, num_coords = pred.shape[-2:]
 
         # Add dummy values for yaws and boxes here because we will fill them in from the ground truth
-        return Trajectories(
+        '''return Trajectories(
             pred,
             torch.zeros(pred.shape[0], num_timesteps),
             torch.ones(pred.shape[0], num_coords),
+        )'''
+        return Trajectories(
+            pred[:, :, 0:2],
+            torch.zeros(pred.shape[0], num_timesteps),
+            pred[:, :, 3:5]
         )

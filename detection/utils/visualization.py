@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from matplotlib.patches import Arrow, Rectangle
+from matplotlib.patches import Arrow, Rectangle, Ellipse
 
 from detection.types import Detections
 
@@ -51,6 +51,49 @@ def plot_box(
             lw=1,
         )
     )
+
+
+def plot_ellipse(
+    ax: Axes,
+    x: float,
+    y: float,
+    yaw: float,
+    length: float,
+    width: float,
+    color: Any,
+    label: str,
+) -> None:
+    """Plot a bounding box onto the given axes."""
+    dx = np.cos(yaw) * length - np.sin(yaw) * width
+    dy = np.sin(yaw) * length + np.cos(yaw) * width
+
+    # Plot rectangle
+    ax.add_patch(
+        Ellipse(
+            (x - dx / 2, y - dy / 2),
+            length,
+            width,
+            np.rad2deg(yaw),
+            #edgecolor=color,
+            facecolor=color,
+            lw=2,
+            label=label,
+        )
+    )
+
+    # Plot orientation arrow
+    '''ax.add_patch(
+        Arrow(
+            x,
+            y,
+            np.cos(yaw) * length / 2,
+            np.sin(yaw) * length / 2,
+            edgecolor=color,
+            facecolor=color,
+            capstyle="projecting",
+            lw=1,
+        )
+    )'''
 
 
 def visualize_detections(
