@@ -250,7 +250,9 @@ def test(
         detections = model.inference(bev_lidar[0].to(device))
         lidar = bev_lidar[0].sum(0).nonzero().detach().cpu()[:, [1, 0]]
         visualize_detections(lidar, detections, labels[0])
-        plt.savefig(f"{output_root}/{idx:03d}.png")
+        #  only save those plots  - save some disk usage
+        if idx in (0, 100, 400, 600): 
+            plt.savefig(f"{output_root}/{idx:03d}.png")
         plt.close("all")
 
         # Save loss
@@ -262,6 +264,10 @@ def test(
     avg_loss /= len(evaluator)
 
     checkpt = checkpoint_path.split('/')[-1].split('.')[0]
+<<<<<<< HEAD
+=======
+    
+>>>>>>> origin/m1-2.3
     save_object(evaluator, f"{output_root}/evaluator_" + checkpt + ".pth")
     save_object(avg_loss, f"{output_root}/avg_loss_" + checkpt + ".pth")
 
@@ -294,10 +300,8 @@ def evaluate(
     """Evaluate the detector on Pandaset and save its metrics.
 
     Args:
-        data_root: The root directory of the Pandaset dataset.
         output_root: The root directory to output visualizations and checkpoints.
         seed: A fixed random seed for reproducibility.
-        num_workers: The number of dataloader workers.
         checkpoint_path: Optionally, whether to initialize the model from a checkpoint.
     """
     random.seed(seed)

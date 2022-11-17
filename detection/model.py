@@ -133,7 +133,6 @@ class DetectionModel(nn.Module):
         # print(k_local_max)
         k_local_max[k_local_max != predictions[None,0,:,:]] = 0
 
-        print("number of local max 1: ", torch.count_nonzero(k_local_max))
         # print("k_local_max: " + str(k_local_max))
         scores, k_indicies = torch.topk(k_local_max.flatten(), k=k)
         print("number of local max 2: ", scores.shape[0])
@@ -142,6 +141,11 @@ class DetectionModel(nn.Module):
         scores = torch.flatten(scores[scores >= score_threshold])
 
         k_local_max = torch.cat((k_indicies[:,None] % int(W), k_indicies[:,None] // int(W)), dim=1)
+
+        # print("k_indicies shape" + str(k_indicies.shape)+ str(k_indicies.type()))
+        # print("k_local_max shape: " + str(k_local_max.shape) + str(k_local_max.type()))
+        # print("k_indicies: " + str(k_indicies))
+        # print("k_local_max: " + str(k_local_max))
 
         # step 3
         # offset_x = torch.gather(torch.flatten(predictions[None,1,:,:]), 0, k_indicies)

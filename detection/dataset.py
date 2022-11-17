@@ -42,6 +42,7 @@ TRAINING_SEQUENCE_IDS = [
 
 
 VALIDATION_SEQUENCE_IDS = [17, 28, 19, 21, 3, 4, 32, 35, 34, 33, 5, 2]
+# VALIDATION_SEQUENCE_IDS = [17, 28]
 
 
 class PandasetDataset:

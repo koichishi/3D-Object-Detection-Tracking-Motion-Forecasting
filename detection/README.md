@@ -35,6 +35,8 @@ Notice that to save disk quota, only four selected plot will be saved. You can m
 
 ```bash
 python -m detection.main test --data_root=<your_path_to_dataset> --output_root=<your_path_to_outputs> --checkpoint_path<your_path_to_checkpoint>
+
+srun -p csc490-compute -c 6 -N 1 --gres gpu -o ~/Desktop/csc490/3D-Object-Detection/output/visualization/pa_009/outfile python3 -m detection.main test --data_root=/u/csc490h/dataset --output_root=/h/u9/c7/00/shigongy/Desktop/csc490/3D-Object-Detection/output/visualization/pa_009 --checkpoint_path=/h/u9/c7/00/shigongy/Desktop/csc490/3D-Object-Detection/output/train/pa_009.pth
 ```
 
 This command will save detection visualizations to `<your_path_to_outputs>`.
