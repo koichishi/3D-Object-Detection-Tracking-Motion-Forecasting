@@ -187,6 +187,9 @@ class Matching:
         total_false_positives = sum(self.num_false_positives_list)
         total_mismatches = sum(self.num_mismatches_list)
         total_gt = total_misses + sum(self.num_matches_list)
+        print("total_misses, ", total_misses)
+        print("total_false_positives, ", total_false_positives)
+        print("total_mismatches, ", total_mismatches)
         return 1.0 - (total_misses + total_false_positives + total_mismatches) / total_gt
 
     def compute_gt_coverage_percentage(

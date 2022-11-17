@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from tracking.cost import iou_2d
+from tracking.cost import iou_2d, Ciou_2d
 from tracking.matching import greedy_matching, hungarian_matching
 from tracking.types import ActorID, AssociateMethod, SingleTracklet
 
@@ -55,10 +55,34 @@ class Tracker:
         Returns:
             cost_matrix: cost matrix of shape [M, N]
         """
-        # TODO: Replace this stub code by making use of iou_2d
         # M, N = bboxes1.shape[0], bboxes2.shape[0]
         # cost_matrix = torch.ones((M, N))
+
+        # improvement: uncomment when applying CIoU
+        # iou_penalty = Ciou_2d(bboxes1, bboxes2)
+        # return 1 - iou_penalty
+        
+        # improvement: uncomment when applying velocity predition or original implementation
         return 1 - iou_2d(bboxes1, bboxes2)
+
+    def velocity_prediction(self, prev_bbox_ids):
+        velocities = []
+        for track_id in prev_bbox_ids:
+            tracklet = self.tracks[track_id].bboxes_traj
+            cur_bbox = tracklet[-1][: 2] # Only keep centroid
+            if len(tracklet) > 1:
+                prev_bbox = tracklet[-2][: 2] # Only keep centroid
+            else:
+                prev_bbox = 0
+            velocities.append(cur_bbox - prev_bbox)
+        # Padding back to Mx5
+        pad = torch.nn.ZeroPad2d((0, 3, 0, 0))
+        velocities = pad(torch.stack(velocities))
+        # print(velocities)
+        return velocities
+
+    def bbox_prediction(self, velocities: Tensor, position: Tensor):
+        return position + velocities
 
     def associate_greedy(
         self, bboxes1: Tensor, bboxes2: Tensor
@@ -73,16 +97,10 @@ class Tracker:
             and j-th box in bboxes2 are associated.
             cost_matrix: cost matrix of shape [M, N]
         """
-        # TODO: Replace this stub code by invoking self.cost_matrix and greedy_matching
         M, N = bboxes1.shape[0], bboxes2.shape[0]
         cost_matrix = self.cost_matrix(bboxes1, bboxes2)
         assign_matrix = torch.zeros((M, N))
         row_ids, col_ids = greedy_matching(cost_matrix)
-        # print("M: {}, N: {}".format(M, N))
-        # print("assign_max shape: ", assign_matrix.shape)
-        # print("cost_max shape: ", cost_matrix.shape)
-        # print("Row ids:", row_ids)
-        # print("Col ids:", col_ids)
         assign_matrix[row_ids, col_ids] = 1
         return assign_matrix, cost_matrix
 
@@ -99,7 +117,6 @@ class Tracker:
             and j-th box in bboxes2 are associated.
             cost_matrix: cost matrix of shape [M, N]
         """
-        # TODO: Replace this stub code by invoking self.cost_matrix and hungarian_matching
         M, N = bboxes1.shape[0], bboxes2.shape[0]
         cost_matrix = self.cost_matrix(bboxes1, bboxes2)
         assign_matrix = torch.zeros((M, N))
@@ -108,7 +125,7 @@ class Tracker:
         return assign_matrix, cost_matrix
 
     def track_consecutive_frame(
-        self, bboxes1: Tensor, bboxes2: Tensor
+        self, bboxes1: Tensor, bboxes2: Tensor, predicted_bboxes2=None
     ) -> Tuple[Tensor, Tensor]:
         """This function tracks the bboxes2 in the current frame against bboxes1 in the previous frame,
         by associating bboxes1 and bboxes2 with associate_method, and filtering out the associations with
@@ -117,6 +134,7 @@ class Tracker:
         Args:
             bboxes1: bounding box set of shape [M, 5]
             bboxes2: bounding box set of shape [N, 5]
+            predicted_bboxes2: bounding box set of shape [M, 5]
         Returns:
             assign_matrix: binary assignment matrix of shape [M, N], where A[i,j] = 1 means i-th box in bboxes1
             and j-th box in bboxes2 are associated. For any 0 <= i < M, sum_{0 <= j < n}(A[i,j]) is either 0
@@ -124,6 +142,9 @@ class Tracker:
             then bboxes2[j] is the start of a new tracklet.
             cost_matrix: cost matrix of shape [M, N]
         """
+        if predicted_bboxes2 is not None:
+            bboxes1 = predicted_bboxes2
+
         if self.associate_method == AssociateMethod.GREEDY:
             assign_matrix, cost_matrix = self.associate_greedy(bboxes1, bboxes2)
         elif self.associate_method == AssociateMethod.HUNGARIAN:
@@ -131,12 +152,16 @@ class Tracker:
         else:
             raise ValueError(f"Unknown association method {self.associate_method}")
 
-        # TODO: Filter out matches with costs >= self.match_th
-        # print("conditional idx mat: ", (cost_matrix >= self.match_th))
-        assign_matrix = torch.where(torch.tensor(cost_matrix >= self.match_th), 
-                                    torch.tensor(0.0), assign_matrix 
-                                    )
+        # Uncomment if check association similarity rates between the two algorithm
+        # assign_matrix, _ = self.associate_greedy(bboxes1, bboxes2)
+        # assign_matrix1, cost_matrix = self.associate_hungarian(bboxes1, bboxes2)
 
+        assign_matrix = torch.where(torch.tensor(cost_matrix >= self.match_th), 
+                    torch.tensor(0.0), assign_matrix)
+        # Uncomment if check association similarity rates between the two algorithm
+        # assign_matrix1 = torch.where(torch.tensor(cost_matrix) >= self.match_th, 
+        #             torch.tensor(0.0), assign_matrix1)
+        # print("assignments the same? ", torch.equal(assign_matrix1, assign_matrix))
         return assign_matrix, cost_matrix
 
     def track(self, bboxes_seq: List[Tensor], scores_seq: List[Tensor]):
@@ -149,7 +174,7 @@ class Tracker:
         Returns:
             None
         """
-        # Track first frame by starting a tracklet for every bbox in the frame
+        total_assign_diff = []
         cur_frame_track_ids = []
         for idx, bbox in enumerate(bboxes_seq[0]):
             if scores_seq is not None and scores_seq[0][idx] < self.min_score:
@@ -164,9 +189,16 @@ class Tracker:
             if scores_seq is not None:
                 prev_bboxes = prev_bboxes[scores_seq[frame_id - 1] >= self.min_score]
                 cur_bboxes = cur_bboxes[scores_seq[frame_id] >= self.min_score]
+            # TODO: improvement: velocity prediction based cost matrix
+            predicted_velocities = self.velocity_prediction(cur_frame_track_ids)
+            predicted_cur_bboxes = self.bbox_prediction(predicted_velocities, prev_bboxes)
+            # TODO: improvement: uncomment when applying motion feature
             assign_matrix, cost_matrix = self.track_consecutive_frame(
-                prev_bboxes, cur_bboxes
+                prev_bboxes, cur_bboxes#, predicted_cur_bboxes
             )
+            # TODO: uncomment if check association similarity rates between the two algorithm
+            # total_assign_diff.append(assign_diff)
+
             prev_frame_track_ids = deepcopy(cur_frame_track_ids)
             cur_frame_track_ids = []
             prev_bbox_ids, cur_bbox_ids = np.where(assign_matrix)
@@ -182,3 +214,5 @@ class Tracker:
                 else:
                     track_id = self.create_new_tracklet(frame_id, cur_bboxes[j], 0)
                 cur_frame_track_ids.append(track_id)
+        # Uncomment if check association similarity rates between the two algorithm
+        # print("Avg assignment difference (greedy and Hung) rate: ", sum(total_assign_diff) / len(total_assign_diff))

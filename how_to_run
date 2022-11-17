@@ -1,0 +1,11 @@
+# Srun command
+srun -p csc490-compute -c 6 -N 1 --gres gpu -o /h/u9/c7/00/shigongy/Desktop/csc490/3D-Object-Detection/run_outfile 
+ 
+# tracking
+python3 -m tracking.main track --dataset_path=/u/csc490h/dataset --tracker_associate_method=<method> --detection_path=/tracking/detection_results/csc490_detector --result_path=<result_path>
+# evaluate
+python3 -m tracking.main evaluate --result_path=<result_path>
+# visualize
+python3 -m tracking.main visualize --result_path=<result_path>
+# hyperparameter tuning
+python3 -m tracking.main hyperparameter_tuning --dataset_path=/u/csc490h/dataset --tracker_associate_method=<method> --detection_path=/tracking/detection_results/csc490_detector --result_path=<result_path>

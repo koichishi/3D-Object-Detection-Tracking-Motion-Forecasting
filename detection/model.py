@@ -138,7 +138,6 @@ class DetectionModel(nn.Module):
         # step 3
         offset_x = predictions[1][k_local_max[:,1], k_local_max[:,0]]
         offset_y = predictions[2][k_local_max[:,1], k_local_max[:,0]]
-
         centroids = torch.cat((torch.flatten(offset_x)[:,None], torch.flatten(offset_y)[:,None]), dim=1) + k_local_max
 
         '''another idea (if it works we can use it for steps 4&5 too)
