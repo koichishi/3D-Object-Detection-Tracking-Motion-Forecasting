@@ -1,6 +1,7 @@
-# CSC490H1: Making Your Self-driving Car Perceive the World
+Self-driving Model Using LiDAR 
 
-This repository contains the project code made by Gongyi Shi and Anny Dai.
+This repository contains the project by Gongyi Shi and Anny Dai, under supervision of 
+Prof. Raquel Urtasun.
 
 ## Getting started
 
