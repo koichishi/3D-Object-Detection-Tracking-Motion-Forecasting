@@ -1,4 +1,4 @@
-Self-driving Model Using LiDAR 
+# Self-driving Model Using LiDAR 
 
 This repository contains the project by Gongyi Shi and Anny Dai, under supervision of 
 Prof. Raquel Urtasun.
